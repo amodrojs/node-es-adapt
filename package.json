@@ -1,0 +1,23 @@
+{
+  "name": "node-es-adapt",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amodrojs/node-es-adapt.git"
+  },
+  "author": "James Burke <jrburke@gmail.com> (http://github.com/jrburke)",
+  "license": "BSD-3-Clause AND MIT",
+  "bugs": {
+    "url": "https://github.com/amodrojs/node-es-adapt/issues"
+  },
+  "homepage": "https://github.com/amodrojs/node-es-adapt",
+  "dependencies": {
+    "amodro-lifecycle": "^0.1.1",
+    "esm-es5": "0.0.3"
+  }
+}
