@@ -2,8 +2,9 @@
 
 var esmEs5 = require('esm-es5'),
     fs = require('fs'),
-    Lifecycle = require('amodro-lifecycle/lifecycle-node-debug'),
-    //NativeModule = require('native_module'),
+    Lifecycle = require('amodro-lifecycle/lifecycle-node'),
+    // Lifecycle = require('amodro-lifecycle/lifecycle-node-debug'),
+    // NativeModule = require('native_module'),
     Module = require('module'),
     path = require('path');
 
@@ -29,8 +30,6 @@ var oldSetModule = lcProto.setModule;
 var protoMethods = {
   // START lifecycle overrides
   normalize: function(id, refId) {
-console.log('NORMALIZE:1 ' + id, + ', refId: ' + refId);
-
     var parent = null;
     if (refId) {
       parent = new Module(refId);
@@ -38,7 +37,6 @@ console.log('NORMALIZE:1 ' + id, + ', refId: ' + refId);
       parent.paths = Module._nodeModulePaths(path.dirname(refId));
     }
 
-console.log('NORMALIZE: ' + id, + ', refId: ' + refId);
     var normalizedId = Module._resolveFilename(id, parent);
 
     return normalizedId;
@@ -120,8 +118,13 @@ console.log('NORMALIZE: ' + id, + ', refId: ' + refId);
     // Seed traditional cache so that the traditional calls backins instantiate
     // work correctly.
     if (!isTemp) {
-console.log('SETTING MODULE VALUE: ' + normalizedId + ', ' + JSON.stringify(value));
-      Module._cache[normalizedId] = value;
+      var mod = new Module(normalizedId);
+      mod.filename = normalizedId;
+      mod.paths = Module._nodeModulePaths(path.dirname(normalizedId));
+      mod.exports = value;
+      mod.loaded = true;
+
+      Module._cache[normalizedId] = mod;
     }
 
     return result;
