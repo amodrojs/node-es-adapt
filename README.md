@@ -1,3 +1,10 @@
+
+
+## Prerequisites
+
+node v0.12.4 or io.js
+
+
 ## node notes
 
 lifecycle
