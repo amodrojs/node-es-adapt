@@ -197,11 +197,34 @@ LoaderLifecyle.prototype = lcProto;
 
 var defaultLoader = new LoaderLifecyle();
 
+function asyncRequire(refId, deps, callback, errback) {
+  var p = Promise.resolve()
+  .then(function() {
+    return Promise.all(deps.map(function(dep) {
+      return defaultLoader.useUnnormalized(dep, refId);
+    }));
+  });
+
+  if (callback) {
+    p = p.then(function(ary) {
+      return callback.apply(undefined, ary);
+    });
+  }
+  if (errback) {
+    p = p.catch(errback);
+  }
+  return p;
+}
+
 // Modify traditional Module require to be aware of ES-ES5 export adaptation,
 // later allow for an async require.
 var oldRequire = Module.prototype.require;
-Module.prototype.require = function(id) {
+Module.prototype.require = function(id, callback, errback) {
   var normalizedId;
+
+  if (Array.isArray(id)) {
+    return asyncRequire(this.id, id, callback, errback);
+  }
 
   if (id.indexOf('!') !== -1) {
     normalizedId = defaultLoader.normalize(id, this.id);
