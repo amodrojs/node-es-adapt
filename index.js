@@ -24,6 +24,13 @@ function stripBOM(content) {
   return content;
 }
 
+function setTranslated(loader, normalizedId, esmResult) {
+  loader.translated[normalizedId] = esmResult;
+  loader.esType[normalizedId] = true;
+  loader.addToRegistry(normalizedId,
+                 loader.translated[normalizedId].depIds);
+}
+
 var lcProto = Lifecycle.prototype;
 var oldSetModule = lcProto.setModule;
 
@@ -37,7 +44,18 @@ var protoMethods = {
       parent.paths = Module._nodeModulePaths(path.dirname(refId));
     }
 
-    var normalizedId = Module._resolveFilename(id, parent);
+    var normalizedId;
+    try {
+      normalizedId = Module._resolveFilename(id, parent);
+    } catch(e) {
+      if (hasProp(this.pluginNormalized, id)) {
+//todo: what is id is './a'? should there be a bare minimum of dot resolution
+//here?
+        return id;
+      } else {
+        throw e;
+      }
+    }
 
     return normalizedId;
   },
@@ -55,10 +73,17 @@ var protoMethods = {
     //   value = NativeModule.require(normalizedId);
     // }
 
-    if (!value) {
-      var source = stripBOM(fs.readFileSync(location, 'utf8')),
-          esmResult = esmEs5(source);
-
+    if (hasProp(this.pluginFetched, location)) {
+      delete this.pluginFetched[location];
+      return fs.readFileSync(location, 'utf8');
+    } else if (!value) {
+      var source = stripBOM(fs.readFileSync(location, 'utf8'));
+      var esmResult;
+      try {
+        esmResult = esmEs5(source);
+      } catch(e) {
+        throw new Error('esmEs5 error for ' + normalizedId + ': ' + e);
+      }
       if (!esmResult.translated) {
         // Traditional load.
         var refModule = new Module(refId);
@@ -66,10 +91,7 @@ var protoMethods = {
         refModule.paths = Module._nodeModulePaths(path.dirname(refId));
         value = Module._load(normalizedId, refId ? refModule : null);
       } else {
-        this.translated[normalizedId] = esmResult;
-        this.esType[normalizedId] = true;
-        this.addToRegistry(normalizedId,
-                       this.translated[normalizedId].depIds);
+        setTranslated(this, normalizedId, esmResult);
       }
     }
 
@@ -80,7 +102,17 @@ var protoMethods = {
   },
 
   translate: function(normalizedId, location, source) {
-    // No need to do work here. Revisit when looking at loader plugins.
+    // Expected that this should only be called in loader plugin cases.
+    var esmResult = esmEs5(source);
+    if (esmResult.translated) {
+      setTranslated(this, normalizedId, esmResult);
+      // Since it has been translated and have something in the registry,
+      // and relying on the Module._compile to do the actual execution in
+      // instantiate, return empty source here.
+      return '';
+    }
+
+    return source;
   },
 
   depend: function(normalizedId, deps) {
@@ -99,8 +131,7 @@ var protoMethods = {
     // This could be a fancier, native ES loader assisted process, but since
     // the source has already been transformed to es5 syntax, then leverage
     // traditional system to do the load, allows for debug breakpoints then
-    // too.
-
+    // too. This is also why the work is done here instead of evaluate.
     var mod = new Module(normalizedId);
     mod.filename = normalizedId;
     mod.paths = Module._nodeModulePaths(path.dirname(normalizedId));
@@ -158,6 +189,8 @@ function LoaderLifecyle() {
   this.es5AdaptedExports = {};
 
   this.translated = {};
+  this.pluginFetched = {};
+  this.pluginNormalized = {};
 }
 
 LoaderLifecyle.prototype = lcProto;
@@ -168,7 +201,14 @@ var defaultLoader = new LoaderLifecyle();
 // later allow for an async require.
 var oldRequire = Module.prototype.require;
 Module.prototype.require = function(id) {
-  var normalizedId = Module._resolveFilename(id, this);
+  var normalizedId;
+
+  if (id.indexOf('!') !== -1) {
+    normalizedId = defaultLoader.normalize(id, this.id);
+    return defaultLoader.getModule(normalizedId, true);
+  }
+
+  normalizedId = Module._resolveFilename(id, this);
   if (hasProp(defaultLoader.esType, this.id) &&
       !hasProp(defaultLoader.esType, normalizedId)) {
         // es asks for amd: { default: }
@@ -214,13 +254,14 @@ protoModifiers.push(function (proto) {
         normalize: true,
         locate: true,
         fetch: true,
-        depend: true
+        depend: true,
+        //NOTE different from amodro-base
+        translate: true
       };
 
   function interceptMethod(methodName) {
     return function(normalizedId) {
       var args = slice.call(arguments);
-
       var pluginDesc = this.getPluginDesc(normalizedId);
       if (pluginDesc) {
         var plugin = pluginDesc.plugin;
@@ -260,8 +301,11 @@ protoModifiers.push(function (proto) {
         return pluginId + '!' +
                plugin.normalize(this.getPluginProxy(), resourceId, refId);
       } else {
-        return pluginId + '!' +
-               oldMethods.normalize.call(this, resourceId, refId);
+        this.pluginNormalized[resourceId] = true;
+        var result = pluginId + '!' +
+                     oldMethods.normalize.call(this, resourceId, refId);
+        delete this.pluginNormalized[resourceId];
+        return result;
       }
     } else {
       return oldMethods.normalize.call(this, id, refId);
@@ -331,9 +375,9 @@ protoModifiers.push(function (proto) {
             ignoreJsForScript = true;
             var index = resourceId.lastIndexOf('.');
             if (index !== -1) {
-              location = oldMethods.locate.call(this,
-                                            resourceId.substring(0, index),
-                                            resourceId.substring(index + 1));
+              //NOTE: different from amodro-base: since normalize already
+              //identifiese the path just return that value.
+              return resourceId;
             }
           }
         }
@@ -362,6 +406,8 @@ protoModifiers.push(function (proto) {
             return plugin.fetch(this.getPluginProxy(),
                                 resourceId, refId, location);
           } else {
+            //NOTE: this is different than browser loader.
+            this.pluginFetched[location] = true;
             return oldMethods.fetch.call(this, resourceId, refId, location);
           }
         } else {
@@ -377,6 +423,26 @@ protoModifiers.push(function (proto) {
     }
 
     return oldMethods.fetch.call(this, normalizedId, refId, location);
+  };
+
+  proto.translate = function(normalizedId, location, source) {
+    var args = slice.call(arguments);
+    var pluginDesc = this.getPluginDesc(normalizedId);
+    if (pluginDesc) {
+      var plugin = pluginDesc.plugin;
+      if (plugin && plugin.translate) {
+        args[0] = pluginDesc.resourceId;
+        args.unshift(this.getPluginProxy());
+
+        // NOTE different from amodro-base, ask for default translate to
+        // do work, since the idea is that plugins here generate ES module
+        // syntax.
+        source = plugin.translate.apply(this, args);
+        return oldMethods.translate.call(this, normalizedId, location, source);
+      }
+    }
+
+    return oldMethods.translate.apply(this, args);
   };
 
   function makeProxyMethod(proxy, methodName, instance) {

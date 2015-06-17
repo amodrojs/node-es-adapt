@@ -14,14 +14,12 @@ function jsEscape(content) {
     .replace(/[\u2029]/g, '\\u2029');
 }
 
-module.exports = {
-  locateDetectExtension: true,
+export var locateDetectExtension = true;
 
-  translate: function(loader, normalizedId, location, source) {
-    source = 'export default \'' + jsEscape(source) + '\';\n';
+export function translate(loader, normalizedId, location, source) {
+  source = 'export default \'' + jsEscape(source) + '\';\n';
 
-    //Add in helpful debug line
-    source += '\r\n//@ sourceURL=' + location;
-    return source;
-  }
-};
+  //Add in helpful debug line
+  source += '\r\n//@ sourceURL=' + location;
+  return source;
+}
