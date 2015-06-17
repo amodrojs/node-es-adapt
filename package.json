@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "",
   "main": "index.js",
+  "bin": {
+        "node-es-adapt": "./bin/node-es-adapt"
+  },
   "scripts": {
     "test": "mocha test"
   },
