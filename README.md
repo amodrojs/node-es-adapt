@@ -36,10 +36,9 @@ This adapter modifies `require` so that you can do an async require for it, in t
 The async require returns a promise whose resolved value is an array of the dependencies that were requested. However, you can pass a callback function as the second argument to the async require that will receive the dependencies as named arguments.
 
 ```javascript
-
-
 require(['a', 'b'], function(a, b) {
-
+  // a is the module value for 'a'
+  // b is the module value for b
 }, function(error) {
   // Error handler. As with a normal then promise listener,
   // does not catch errors thrown in the
@@ -52,7 +51,6 @@ require(['a', 'b'], function(a, b) {
   // Catches any errors from any part of the preceding
   // then chain.
 });
-
 ```
 
 * dual test
@@ -60,6 +58,8 @@ require(['a', 'b'], function(a, b) {
 ## Supported
 
 * loader plugins
+* level of ES module syntax is from esm-es5, which also depends on esprima.
+Either one of those might need updates over time.
 
 ## Contrast with amodro-base
 

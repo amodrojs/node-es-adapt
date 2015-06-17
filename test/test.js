@@ -15,6 +15,19 @@ it('a-b-c', function(done) {
   });
 });
 
+// ES modules depending on ES modules, with a parallel dependency
+it('parallel-deps-define', function(done) {
+  loader(module.id, ['./parallel-deps-define/foo'], function(foo) {
+    assert.equal('foo', foo.name);
+    assert.equal('bar', foo.bar.name);
+    assert.equal('baz', foo.baz.name);
+    assert.equal('bar', foo.baz.bar.name);
+    done();
+  }).catch(function(err) {
+    done(err);
+  });
+});
+
 // ES depend on traditional node module with lots of internal node_modules
 // dependencies.
 it('a-b-request', function(done) {
