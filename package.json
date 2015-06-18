@@ -21,6 +21,6 @@
   "homepage": "https://github.com/amodrojs/node-es-adapt",
   "dependencies": {
     "amodro-lifecycle": "^0.1.1",
-    "esm-es5": "0.0.4"
+    "esm-es5": "0.0.5"
   }
 }
