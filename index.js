@@ -120,7 +120,7 @@ var protoMethods = {
     return deps;
   },
 
-  evaluate: function(normalizedId, location, source) {
+  parse: function(normalizedId, location, source) {
     // The result of this should be something in the registry.
   },
 
@@ -131,7 +131,7 @@ var protoMethods = {
     // This could be a fancier, native ES loader assisted process, but since
     // the source has already been transformed to es5 syntax, then leverage
     // traditional system to do the load, allows for debug breakpoints then
-    // too. This is also why the work is done here instead of evaluate.
+    // too. This is also why the work is done here instead of parse.
     var mod = new Module(normalizedId);
     mod.filename = normalizedId;
     mod.paths = Module._nodeModulePaths(path.dirname(normalizedId));
@@ -485,7 +485,8 @@ protoModifiers.push(function (proto) {
     makeProxyMethod(proxy, 'useUnnormalized', instance);
     makeProxyMethod(proxy, 'use', instance);
     makeProxyMethod(proxy, 'setModule', instance);
-    makeProxyMethod(proxy, 'evaluate', instance);
+    makeProxyMethod(proxy, 'parse', instance);
+    makeProxyMethod(proxy, 'getData', instance);
 
     return proxy;
   }
