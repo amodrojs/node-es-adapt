@@ -1,7 +1,7 @@
 {
   "name": "node-es-adapt",
   "version": "0.0.2",
-  "description": "",
+  "description": "Uses amodro-lifecycle to allow loading ES2015 modules alongside traditional node modules in node",
   "main": "index.js",
   "bin": {
         "node-es-adapt": "./bin/node-es-adapt"
